@@ -49,13 +49,15 @@ const uploadImageToSupabase = async (file, userId) => {
 // Get all products
 router.get("/", async (req, res) => {
   try {
-    const { category, search } = req.query;
+    const { category, search, min_price, max_price } = req.query;
 
-    console.log("Fetching products with filters:", { category, search });
+    console.log("Fetching products with filters:", { category, search, min_price, max_price });
 
     const filters = {};
     if (category) filters.category = category;
     if (search) filters.searchTerm = search;
+    if (min_price) filters.min_price = parseFloat(min_price);
+    if (max_price) filters.max_price = parseFloat(max_price);
 
     const products = await getProducts(filters);
 

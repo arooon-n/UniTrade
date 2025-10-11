@@ -96,6 +96,14 @@ export const getProducts = async (filters = {}) => {
     );
   }
 
+  if (filters.min_price !== undefined) {
+    query = query.gte("price", filters.min_price);
+  }
+
+  if (filters.max_price !== undefined) {
+    query = query.lte("price", filters.max_price);
+  }
+
   const { data, error } = await query.order("created_at", { ascending: false });
 
   if (error) throw error;
