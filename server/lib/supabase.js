@@ -16,12 +16,12 @@ const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 // Debug logging to see what's loaded
 console.log("Environment check:");
-console.log("- SUPABASE_URL:", supabaseUrl ? "✅ Set" : "❌ Missing");
+console.log("- SUPABASE_URL:", supabaseUrl ? "[][] Set" : "[][] Missing");
 console.log(
   "- SUPABASE_SERVICE_ROLE_KEY:",
-  supabaseServiceKey ? "✅ Set" : "❌ Missing"
+  supabaseServiceKey ? "[][] Set" : "[][] Missing"
 );
-console.log("- SUPABASE_ANON_KEY:", supabaseAnonKey ? "✅ Set" : "❌ Missing");
+console.log("- SUPABASE_ANON_KEY:", supabaseAnonKey ? "[][] Set" : "[][] Missing");
 
 if (!supabaseUrl) {
   throw new Error("SUPABASE_URL environment variable is required");
@@ -41,4 +41,4 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // Create public client for auth verification
 export const supabasePublic = createClient(supabaseUrl, supabaseAnonKey);
 
-console.log("✅ Supabase clients initialized successfully");
+console.log("[][] Supabase clients initialized successfully");

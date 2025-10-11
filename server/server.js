@@ -9,6 +9,7 @@ import authRoutes from "./routes/auth.js";
 import productRoutes from "./routes/products.js";
 import userRoutes from "./routes/users.js";
 import transactionRoutes from "./routes/transactions.js";
+import reviewRoutes from "./routes/reviews.js";
 
 dotenv.config();
 
@@ -40,6 +41,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 // Basic test route
 app.get("/api/test", (req, res) => {

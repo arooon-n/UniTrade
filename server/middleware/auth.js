@@ -7,7 +7,7 @@ export const authenticate = async (req, res, next) => {
   console.log("Authorization header:", authHeader);
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    console.log("❌ No valid auth header");
+    console.log("[][] No valid auth header");
     return res.status(401).json({ error: "Access denied. No token provided." });
   }
 
@@ -26,7 +26,7 @@ export const authenticate = async (req, res, next) => {
     console.log("- Error:", error);
 
     if (error || !user) {
-      console.log("❌ Invalid token or user not found");
+      console.log("[][] Invalid token or user not found");
       return res.status(401).json({ error: "Invalid token." });
     }
 
@@ -47,7 +47,7 @@ export const authenticate = async (req, res, next) => {
     }
 
     req.user = userData;
-    console.log("✅ Authentication successful for:", userData.email);
+    console.log("[][] Authentication successful for:", userData.email);
     next();
   } catch (error) {
     console.error("Authentication error:", error);

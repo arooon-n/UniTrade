@@ -131,7 +131,7 @@ router.post("/purchase", authenticate, async (req, res) => {
       });
     }
 
-    // Create transaction
+    // Create transaction (auto-completed for prototype)
     const { data: transaction, error: transactionError } = await supabase
       .from("transactions")
       .insert({
@@ -140,6 +140,7 @@ router.post("/purchase", authenticate, async (req, res) => {
         seller_id: product.owner_id,
         amount: product.price,
         transaction_type: "purchase",
+        transaction_status: "completed", // Auto-complete for prototype
       })
       .select()
       .single();
@@ -195,7 +196,7 @@ router.post("/", authenticate, async (req, res) => {
 
     let amount = product.price;
 
-    // Create transaction
+    // Create transaction (auto-completed for prototype)
     const { data: transaction, error: transactionError } = await supabase
       .from("transactions")
       .insert({
@@ -204,6 +205,7 @@ router.post("/", authenticate, async (req, res) => {
         seller_id: product.owner_id,
         amount,
         transaction_type: transaction_type || "purchase",
+        transaction_status: "completed", // Auto-complete for prototype
         rental_start_date,
         rental_end_date,
       })

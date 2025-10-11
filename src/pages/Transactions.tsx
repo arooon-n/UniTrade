@@ -4,7 +4,8 @@ import { apiService } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ShoppingBag, Calendar, Package, User } from "lucide-react";
+import { ReviewModal } from "@/components/ReviewModal";
+import { ShoppingBag, Calendar, Package, User, Star } from "lucide-react";
 
 interface Transaction {
   id: string;
@@ -39,6 +40,12 @@ export const Transactions: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"purchases" | "sales">(
     "purchases"
   );
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [success, setSuccess] = useState("");
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -46,6 +53,8 @@ export const Transactions: React.FC = () => {
       const response = await apiService.getUserTransactions(
         activeTab === "purchases" ? "buyer" : "seller"
       );
+      console.log("Fetched transactions:", response.transactions);
+      console.log("Active tab:", activeTab);
       setTransactions(response.transactions || []);
     } catch (err) {
       setError(
@@ -61,6 +70,27 @@ export const Transactions: React.FC = () => {
       fetchTransactions();
     }
   }, [user, fetchTransactions]);
+
+  const handleReviewClick = (productId: string, productTitle: string) => {
+    setSelectedProduct({ id: productId, title: productTitle });
+    setReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!selectedProduct) return;
+
+    try {
+      await apiService.createReview(selectedProduct.id, { rating, comment });
+      setSuccess("Review submitted successfully!");
+      setReviewModalOpen(false);
+      setSelectedProduct(null);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err) {
+      throw err; // Let ReviewModal handle the error
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -92,6 +122,13 @@ export const Transactions: React.FC = () => {
           </h1>
           <p className="text-gray-600 mt-2">Track your purchases and sales</p>
         </div>
+
+        {/* Success Message */}
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg">
+            {success}
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="mb-6">
@@ -227,8 +264,17 @@ export const Transactions: React.FC = () => {
                       <div className="mt-4 flex items-center justify-between">
                         <div className="text-sm text-gray-500">
                           Transaction ID: {transaction.id.slice(0, 8)}...
+                          <span className="ml-2 text-xs text-gray-400">
+                            (Status: {transaction.transaction_status})
+                          </span>
                         </div>
                         <div className="flex space-x-2">
+                          {/* Debug info */}
+                          <div className="text-xs text-gray-400 mr-2">
+                            Tab: {activeTab} | Status:{" "}
+                            {transaction.transaction_status}
+                          </div>
+
                           {transaction.transaction_status === "pending" && (
                             <Button size="sm" variant="outline">
                               View Details
@@ -236,7 +282,18 @@ export const Transactions: React.FC = () => {
                           )}
                           {transaction.transaction_status === "completed" &&
                             activeTab === "purchases" && (
-                              <Button size="sm" variant="outline">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleReviewClick(
+                                    transaction.product_id,
+                                    transaction.product?.title || "Product"
+                                  )
+                                }
+                                className="flex items-center gap-1"
+                              >
+                                <Star size={14} />
                                 Leave Review
                               </Button>
                             )}
@@ -248,6 +305,19 @@ export const Transactions: React.FC = () => {
               </Card>
             ))}
           </div>
+        )}
+
+        {/* Review Modal */}
+        {selectedProduct && (
+          <ReviewModal
+            isOpen={reviewModalOpen}
+            onClose={() => {
+              setReviewModalOpen(false);
+              setSelectedProduct(null);
+            }}
+            onSubmit={handleReviewSubmit}
+            productTitle={selectedProduct.title}
+          />
         )}
       </div>
     </div>

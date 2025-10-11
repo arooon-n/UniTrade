@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { apiService } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Star, Package } from "lucide-react";
 
 interface UserProfile {
   id: string;
@@ -14,6 +15,20 @@ interface UserProfile {
   avatar_url?: string;
 }
 
+interface Review {
+  id: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+  reviewer: {
+    name: string;
+  };
+  product: {
+    title: string;
+    image_urls: string[];
+  };
+}
+
 export const Profile: React.FC = () => {
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -21,15 +36,13 @@ export const Profile: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
     phone: "",
   });
-
-  useEffect(() => {
-    loadProfile();
-  }, []);
 
   const loadProfile = async () => {
     try {
@@ -46,6 +59,27 @@ export const Profile: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const loadReviews = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoadingReviews(true);
+      const data = await apiService.getSellerReviews(user.id);
+      setReviews(data.reviews || []);
+    } catch (err) {
+      console.error("Failed to load reviews:", err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadProfile();
+    if (user) {
+      loadReviews();
+    }
+  }, [user, loadReviews]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -292,6 +326,84 @@ export const Profile: React.FC = () => {
                     </Button>
                   </div>
                 </form>
+              )}
+            </div>
+          </Card>
+
+          {/* Reviews Section */}
+          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm mt-6">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Reviews from Buyers
+                </h2>
+                <div className="text-sm text-gray-600">
+                  {reviews.length} {reviews.length === 1 ? "review" : "reviews"}
+                </div>
+              </div>
+
+              {loadingReviews ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-600 mx-auto"></div>
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Package size={48} className="mx-auto mb-4 text-gray-400" />
+                  <p>No reviews yet</p>
+                  <p className="text-sm mt-2">
+                    Reviews from your buyers will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reviews.map((review) => (
+                    <div
+                      key={review.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="flex">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  size={16}
+                                  className={`${
+                                    i < review.rating
+                                      ? "fill-yellow-400 text-yellow-400"
+                                      : "text-gray-300"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="font-semibold text-gray-900">
+                              {review.reviewer?.name || "Anonymous"}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 mb-2">
+                            {review.comment}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Package size={12} />
+                            <span>{review.product?.title || "Product"}</span>
+                            <span>•</span>
+                            <span>
+                              {new Date(review.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        {review.product?.image_urls?.[0] && (
+                          <img
+                            src={review.product.image_urls[0]}
+                            alt={review.product.title}
+                            className="w-16 h-16 rounded-lg object-cover ml-4"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </Card>

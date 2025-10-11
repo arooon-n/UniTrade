@@ -158,6 +158,10 @@ class ApiService {
     });
   }
 
+  async getSellerReviews(sellerId: string) {
+    return this.request(`/reviews/seller/${sellerId}`);
+  }
+
   // Reports
   async createReport(reportData: any) {
     return this.request("/reports", {

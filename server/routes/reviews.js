@@ -1,179 +1,278 @@
-import express from 'express';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '../config/database.js';
-import { authenticate } from '../middleware/auth.js';
-import { validateRequest, schemas } from '../middleware/validation.js';
+import express from "express";
+import { supabase } from "../lib/supabase.js";
+import { authenticate } from "../middleware/auth.js";
+import { validateRequest, schemas } from "../middleware/validation.js";
 
 const router = express.Router();
 
 // Create review
-router.post('/:productId', authenticate, validateRequest(schemas.review), (req, res) => {
-  const { productId } = req.params;
-  const { rating, comment } = req.body;
-  const reviewer_id = req.user.userId;
+router.post(
+  "/:productId",
+  authenticate,
+  validateRequest(schemas.review),
+  async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const { rating, comment } = req.body;
+      const reviewer_id = req.user.id;
 
-  // Check if user has purchased/rented this product
-  db.get(
-    'SELECT * FROM transactions WHERE product_id = ? AND buyer_id = ? AND payment_status = "completed"',
-    [productId, reviewer_id],
-    (err, transaction) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
+      // Check if user has purchased/rented this product
+      console.log("Checking transaction for:", { productId, reviewer_id });
 
-      if (!transaction) {
-        return res.status(400).json({ error: 'You can only review products you have purchased or rented' });
+      const { data: transaction, error: transactionError } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("product_id", productId)
+        .eq("buyer_id", reviewer_id)
+        .eq("payment_status", "completed")
+        .single();
+
+      console.log("Transaction check result:", {
+        transaction,
+        transactionError,
+      });
+
+      if (transactionError || !transaction) {
+        return res.status(400).json({
+          error: "You can only review products you have purchased",
+          debug: {
+            transactionError: transactionError?.message,
+            productId,
+            reviewer_id,
+          },
+        });
       }
 
       // Check if review already exists
-      db.get(
-        'SELECT * FROM reviews WHERE product_id = ? AND reviewer_id = ?',
-        [productId, reviewer_id],
-        (err, existingReview) => {
-          if (err) {
-            return res.status(500).json({ error: 'Database error' });
-          }
+      const { data: existingReview } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("product_id", productId)
+        .eq("reviewer_id", reviewer_id)
+        .single();
 
-          if (existingReview) {
-            return res.status(400).json({ error: 'You have already reviewed this product' });
-          }
-
-          // Create review
-          const review_id = uuidv4();
-          db.run(
-            'INSERT INTO reviews (review_id, product_id, reviewer_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
-            [review_id, productId, reviewer_id, rating, comment],
-            function(err) {
-              if (err) {
-                return res.status(500).json({ error: 'Failed to create review' });
-              }
-
-              // Update user rating
-              updateUserRating(productId);
-
-              res.status(201).json({
-                message: 'Review created successfully',
-                review_id
-              });
-            }
-          );
-        }
-      );
-    }
-  );
-});
-
-// Get reviews for a product
-router.get('/product/:productId', (req, res) => {
-  const { productId } = req.params;
-
-  db.all(
-    `SELECT r.*, u.name as reviewer_name
-     FROM reviews r
-     JOIN users u ON r.reviewer_id = u.user_id
-     WHERE r.product_id = ?
-     ORDER BY r.created_at DESC`,
-    [productId],
-    (err, reviews) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
+      if (existingReview) {
+        return res.status(400).json({
+          error: "You have already reviewed this product",
+        });
       }
 
-      res.json({ reviews });
+      // Create review
+      const { data: review, error: reviewError } = await supabase
+        .from("reviews")
+        .insert([
+          {
+            product_id: productId,
+            reviewer_id: reviewer_id,
+            rating: rating,
+            comment: comment,
+          },
+        ])
+        .select()
+        .single();
+
+      if (reviewError) {
+        throw reviewError;
+      }
+
+      res.status(201).json({
+        message: "Review created successfully",
+        review,
+      });
+    } catch (error) {
+      console.error("Create review error:", error);
+      res.status(500).json({
+        error: "Failed to create review",
+        details: error.message,
+      });
     }
-  );
+  }
+);
+
+// Get reviews for a product
+router.get("/product/:productId", async (req, res) => {
+  try {
+    const { productId } = req.params;
+
+    const { data: reviews, error } = await supabase
+      .from("reviews")
+      .select(
+        `
+        *,
+        reviewer:reviewer_id (
+          id,
+          name,
+          email
+        )
+      `
+      )
+      .eq("product_id", productId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({ reviews });
+  } catch (error) {
+    console.error("Get reviews error:", error);
+    res.status(500).json({
+      error: "Failed to fetch reviews",
+      details: error.message,
+    });
+  }
 });
 
 // Update review
-router.put('/:id', authenticate, validateRequest(schemas.review), (req, res) => {
-  const { id } = req.params;
-  const { rating, comment } = req.body;
-  const reviewer_id = req.user.userId;
+router.put(
+  "/:id",
+  authenticate,
+  validateRequest(schemas.review),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { rating, comment } = req.body;
+      const reviewer_id = req.user.userId;
 
-  // Check if review belongs to user
-  db.get('SELECT * FROM reviews WHERE review_id = ? AND reviewer_id = ?', [id, reviewer_id], (err, review) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+      // Check if review belongs to user
+      const { data: existingReview, error: checkError } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("id", id)
+        .eq("reviewer_id", reviewer_id)
+        .single();
 
-    if (!review) {
-      return res.status(404).json({ error: 'Review not found or access denied' });
-    }
-
-    // Update review
-    db.run(
-      'UPDATE reviews SET rating = ?, comment = ? WHERE review_id = ?',
-      [rating, comment, id],
-      function(err) {
-        if (err) {
-          return res.status(500).json({ error: 'Failed to update review' });
-        }
-
-        // Update user rating
-        updateUserRating(review.product_id);
-
-        res.json({ message: 'Review updated successfully' });
+      if (checkError || !existingReview) {
+        return res.status(404).json({
+          error: "Review not found or access denied",
+        });
       }
-    );
-  });
-});
+
+      // Update review
+      const { data: review, error: updateError } = await supabase
+        .from("reviews")
+        .update({
+          rating: rating,
+          comment: comment,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      res.json({
+        message: "Review updated successfully",
+        review,
+      });
+    } catch (error) {
+      console.error("Update review error:", error);
+      res.status(500).json({
+        error: "Failed to update review",
+        details: error.message,
+      });
+    }
+  }
+);
 
 // Delete review
-router.delete('/:id', authenticate, (req, res) => {
-  const { id } = req.params;
-  const reviewer_id = req.user.userId;
+router.delete("/:id", authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reviewer_id = req.user.userId;
 
-  // Check if review belongs to user or user is admin
-  db.get('SELECT * FROM reviews WHERE review_id = ?', [id], (err, review) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
+    // Check if review belongs to user or user is admin
+    const { data: review, error: checkError } = await supabase
+      .from("reviews")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (checkError || !review) {
+      return res.status(404).json({ error: "Review not found" });
     }
 
-    if (!review) {
-      return res.status(404).json({ error: 'Review not found' });
-    }
-
-    if (review.reviewer_id !== reviewer_id && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Access denied' });
+    if (review.reviewer_id !== reviewer_id && req.user.role !== "admin") {
+      return res.status(403).json({ error: "Access denied" });
     }
 
     // Delete review
-    db.run('DELETE FROM reviews WHERE review_id = ?', [id], function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to delete review' });
-      }
+    const { error: deleteError } = await supabase
+      .from("reviews")
+      .delete()
+      .eq("id", id);
 
-      // Update user rating
-      updateUserRating(review.product_id);
+    if (deleteError) {
+      throw deleteError;
+    }
 
-      res.json({ message: 'Review deleted successfully' });
+    res.json({ message: "Review deleted successfully" });
+  } catch (error) {
+    console.error("Delete review error:", error);
+    res.status(500).json({
+      error: "Failed to delete review",
+      details: error.message,
     });
-  });
+  }
 });
 
-// Helper function to update user rating
-function updateUserRating(productId) {
-  // Get product owner
-  db.get('SELECT owner_id FROM products WHERE product_id = ?', [productId], (err, product) => {
-    if (!err && product) {
-      // Calculate average rating for user's products
-      db.get(
-        `SELECT AVG(r.rating) as avg_rating
-         FROM reviews r
-         JOIN products p ON r.product_id = p.product_id
-         WHERE p.owner_id = ?`,
-        [product.owner_id],
-        (err, result) => {
-          if (!err && result.avg_rating) {
-            db.run(
-              'UPDATE users SET rating = ? WHERE user_id = ?',
-              [Math.round(result.avg_rating * 10) / 10, product.owner_id]
-            );
-          }
-        }
-      );
+// Get reviews by seller (for seller's profile)
+router.get("/seller/:sellerId", async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+
+    // Get all products by seller
+    const { data: products, error: productsError } = await supabase
+      .from("products")
+      .select("id")
+      .eq("owner_id", sellerId);
+
+    if (productsError) {
+      throw productsError;
     }
-  });
-}
+
+    if (!products || products.length === 0) {
+      return res.json({ reviews: [] });
+    }
+
+    const productIds = products.map((p) => p.id);
+
+    // Get all reviews for seller's products
+    const { data: reviews, error: reviewsError } = await supabase
+      .from("reviews")
+      .select(
+        `
+        *,
+        reviewer:reviewer_id (
+          id,
+          name,
+          email
+        ),
+        product:product_id (
+          id,
+          title,
+          image_urls
+        )
+      `
+      )
+      .in("product_id", productIds)
+      .order("created_at", { ascending: false });
+
+    if (reviewsError) {
+      throw reviewsError;
+    }
+
+    res.json({ reviews: reviews || [] });
+  } catch (error) {
+    console.error("Get seller reviews error:", error);
+    res.status(500).json({
+      error: "Failed to fetch seller reviews",
+      details: error.message,
+    });
+  }
+});
 
 export default router;

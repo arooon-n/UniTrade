@@ -3,7 +3,16 @@ import { motion } from "framer-motion";
 import { apiService } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Package, User, ShoppingBag, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Calendar,
+  Package,
+  User,
+  ShoppingBag,
+  TrendingUp,
+  Star,
+} from "lucide-react";
+import { ReviewModal } from "@/components/ReviewModal";
 
 interface Transaction {
   id: string;
@@ -36,6 +45,15 @@ export const Transactions: React.FC = () => {
   );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] =
+    useState<Transaction | null>(null);
+  const [productReviews, setProductReviews] = useState<
+    Record<string, { rating: number; comment: string; id: string }>
+  >({});
+  const [existingReview, setExistingReview] = useState<
+    { rating: number; comment: string } | undefined
+  >(undefined);
 
   useEffect(() => {
     loadTransactions();
@@ -58,6 +76,32 @@ export const Transactions: React.FC = () => {
 
       setPurchases(purchaseData.transactions || []);
       setSales(salesData.transactions || []);
+
+      // Load existing reviews for purchased products
+      const reviewsMap: Record<
+        string,
+        { rating: number; comment: string; id: string }
+      > = {};
+      for (const purchase of purchaseData.transactions || []) {
+        try {
+          const reviewData = await apiService.getProductReviews(
+            purchase.product_id
+          );
+          const userReview = reviewData.reviews?.find(
+            (r: { reviewer_id: string }) => r.reviewer_id === purchase.buyer_id
+          );
+          if (userReview) {
+            reviewsMap[purchase.product_id] = userReview;
+          }
+        } catch (err) {
+          // Ignore errors for individual reviews
+          console.error(
+            `Failed to load review for product ${purchase.product_id}:`,
+            err
+          );
+        }
+      }
+      setProductReviews(reviewsMap);
     } catch (err) {
       console.error("Transaction loading error:", err);
       setError(
@@ -89,6 +133,48 @@ export const Transactions: React.FC = () => {
         return "bg-red-100 text-red-800 border-red-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const handleReviewClick = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    const existingReview = productReviews[transaction.product_id];
+    setExistingReview(
+      existingReview
+        ? { rating: existingReview.rating, comment: existingReview.comment }
+        : undefined
+    );
+    setIsReviewModalOpen(true);
+  };
+
+  const handleReviewSubmit = async (rating: number, comment: string) => {
+    if (!selectedTransaction) return;
+
+    try {
+      const existingReview = productReviews[selectedTransaction.product_id];
+
+      if (existingReview) {
+        // Update existing review
+        await apiService.updateReview(existingReview.id, {
+          rating,
+          comment,
+        });
+      } else {
+        // Create new review
+        await apiService.createReview(selectedTransaction.product_id, {
+          rating,
+          comment,
+        });
+      }
+
+      setIsReviewModalOpen(false);
+      setSelectedTransaction(null);
+      setExistingReview(undefined);
+      // Refresh transactions to show updated status
+      await loadTransactions();
+    } catch (err) {
+      console.error("Failed to submit review:", err);
+      throw err; // Re-throw so the modal can show the error
     }
   };
 
@@ -251,11 +337,46 @@ export const Transactions: React.FC = () => {
                   <div className="mt-3 text-sm text-gray-500">
                     Transaction ID: {transaction.id}
                   </div>
+
+                  {/* Review Button - Only show for completed purchases */}
+                  {activeTab === "purchases" &&
+                    transaction.payment_status.toLowerCase() ===
+                      "completed" && (
+                      <div className="mt-4">
+                        <Button
+                          onClick={() => handleReviewClick(transaction)}
+                          className={
+                            productReviews[transaction.product_id]
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "bg-slate-600 hover:bg-slate-700 text-white"
+                          }
+                        >
+                          <Star className="mr-2 h-4 w-4" />
+                          {productReviews[transaction.product_id]
+                            ? "Edit Review"
+                            : "Leave Review"}
+                        </Button>
+                      </div>
+                    )}
                 </div>
               </div>
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Review Modal */}
+      {selectedTransaction && (
+        <ReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => {
+            setIsReviewModalOpen(false);
+            setExistingReview(undefined);
+          }}
+          onSubmit={handleReviewSubmit}
+          productTitle={selectedTransaction.product?.title || "Product"}
+          existingReview={existingReview}
+        />
       )}
     </motion.div>
   );

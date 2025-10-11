@@ -43,7 +43,7 @@ router.post("/register", async (req, res) => {
 
     // Validate required fields
     if (!email || !password || !name) {
-      console.log("❌ Validation failed:");
+      console.log("[][] Validation failed:");
       console.log("- email valid:", !!email);
       console.log("- password valid:", !!password);
       console.log("- name valid:", !!name);
@@ -65,7 +65,7 @@ router.post("/register", async (req, res) => {
 
     // Validate email domain
     if (!validateEmail(email)) {
-      console.log("❌ Invalid email domain:", email);
+      console.log("[][] Invalid email domain:", email);
       return res.status(400).json({
         error: "Invalid email domain",
         message: "Email must end with @cb.students.amrita.edu",
@@ -74,7 +74,7 @@ router.post("/register", async (req, res) => {
     }
 
     console.log(
-      "✅ All required fields present and email domain valid, proceeding with registration..."
+      "[][] All required fields present and email domain valid, proceeding with registration..."
     );
 
     // Create user in Supabase Auth
@@ -156,7 +156,7 @@ router.post("/signup", async (req, res) => {
 
     // Validate email domain
     if (!email.endsWith("@cb.students.amrita.edu")) {
-      console.log("❌ Email domain validation failed:", email);
+      console.log("[][] Email domain validation failed:", email);
       return res.status(400).json({
         error: "Invalid email domain",
         message: "Email must end with @cb.students.amrita.edu",
@@ -165,7 +165,7 @@ router.post("/signup", async (req, res) => {
 
     // Validate email domain
     if (!validateEmail(email)) {
-      console.log("❌ Invalid email domain:", email);
+      console.log("[][] Invalid email domain:", email);
       return res.status(400).json({
         error: "Invalid email domain",
         message: "Email must end with @cb.students.amrita.edu",
@@ -267,7 +267,7 @@ router.post("/signin", async (req, res) => {
 
     // Validate email domain (optional for signin, but recommended)
     if (!validateEmail(email)) {
-      console.log("❌ Invalid email domain for signin:", email);
+      console.log("[][] Invalid email domain for signin:", email);
       return res.status(400).json({
         error: "Invalid email domain",
         message: "Email must end with @cb.students.amrita.edu",
@@ -332,7 +332,7 @@ router.post("/login", async (req, res) => {
     );
 
     if (!email || !password) {
-      console.log("❌ Missing credentials validation failed:");
+      console.log("[][] Missing credentials validation failed:");
       console.log("- email valid:", !!email);
       console.log("- password valid:", !!password);
 
@@ -350,7 +350,7 @@ router.post("/login", async (req, res) => {
 
     // Validate email domain
     if (!validateEmail(email)) {
-      console.log("❌ Invalid email domain:", email);
+      console.log("[][] Invalid email domain:", email);
       return res.status(400).json({
         error: "Invalid email domain",
         message: "Email must end with @cb.students.amrita.edu",

@@ -2,7 +2,7 @@ import { supabase } from "../lib/supabase.js";
 
 export const initializeDatabase = async () => {
   try {
-    console.log("🔍 Testing Supabase connection...");
+    console.log("[][] Testing Supabase connection...");
 
     // Test the Supabase connection
     const { data, error } = await supabase
@@ -12,16 +12,16 @@ export const initializeDatabase = async () => {
 
     if (error && error.code !== "PGRST116") {
       // PGRST116 is "relation does not exist" which is fine for first run
-      console.error("❌ Supabase connection failed:", error);
+      console.error("[][] Supabase connection failed:", error);
       throw error;
     }
 
-    console.log("✅ Connected to Supabase database");
-    console.log("✅ Database initialized successfully");
+    console.log("[][] Connected to Supabase database");
+    console.log("[][] Database initialized successfully");
 
     return true;
   } catch (error) {
-    console.error("❌ Error connecting to Supabase:", error);
+    console.error("[][] Error connecting to Supabase:", error);
     throw error;
   }
 };
