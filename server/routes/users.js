@@ -38,8 +38,6 @@ router.get("/profile", authenticate, async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone_number,
-        profile_picture_url: user.profile_picture_url,
-        avatar_url: user.profile_picture_url, // alias for frontend compatibility
         role: user.role,
         rating: user.rating,
       },
@@ -57,7 +55,7 @@ router.get("/profile", authenticate, async (req, res) => {
 router.put("/profile", authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, phone, profile_picture_url } = req.body;
+    const { name, phone } = req.body;
 
     console.log("Updating profile for user:", userId);
 
@@ -66,7 +64,6 @@ router.put("/profile", authenticate, async (req, res) => {
       .update({
         name,
         phone_number: phone,
-        profile_picture_url,
       })
       .eq("id", userId)
       .select()
@@ -87,8 +84,6 @@ router.put("/profile", authenticate, async (req, res) => {
         name: updatedUser.name,
         email: updatedUser.email,
         phone: updatedUser.phone_number,
-        profile_picture_url: updatedUser.profile_picture_url,
-        avatar_url: updatedUser.profile_picture_url,
         role: updatedUser.role,
         rating: updatedUser.rating,
       },
@@ -138,7 +133,6 @@ router.get("/:id", async (req, res) => {
         name: user.name,
         email: user.email,
         phone: user.phone_number,
-        profile_picture_url: user.profile_picture_url,
         role: user.role,
         rating: user.rating,
       },
@@ -152,11 +146,11 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// Update user profile (removed university)
+// Update user profile
 router.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, profile_picture_url } = req.body; // Removed university
+    const { name } = req.body;
 
     console.log("Updating user:", id);
 
@@ -164,7 +158,6 @@ router.put("/:id", async (req, res) => {
       .from("users")
       .update({
         name,
-        profile_picture_url,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)

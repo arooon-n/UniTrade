@@ -29,7 +29,6 @@ interface Product {
     id: string;
     name: string;
     email: string;
-    profile_picture_url?: string;
   };
 }
 
@@ -265,15 +264,7 @@ export const ProductDetails: React.FC = () => {
                 </h3>
                 <div className="flex items-center space-x-4">
                   <div className="h-12 w-12 bg-gray-200 rounded-full flex items-center justify-center">
-                    {product.users.profile_picture_url ? (
-                      <img
-                        src={product.users.profile_picture_url}
-                        alt={product.users.name}
-                        className="h-12 w-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <User className="h-6 w-6 text-gray-400" />
-                    )}
+                    <User className="h-6 w-6 text-gray-400" />
                   </div>
                   <div>
                     <p className="font-medium">{product.users.name}</p>

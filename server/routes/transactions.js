@@ -140,7 +140,7 @@ router.post("/purchase", authenticate, async (req, res) => {
         seller_id: product.owner_id,
         amount: product.price,
         transaction_type: "purchase",
-        transaction_status: "completed", // Auto-complete for prototype
+        payment_status: "completed", // Auto-complete for prototype
       })
       .select()
       .single();
@@ -205,7 +205,7 @@ router.post("/", authenticate, async (req, res) => {
         seller_id: product.owner_id,
         amount,
         transaction_type: transaction_type || "purchase",
-        transaction_status: "completed", // Auto-complete for prototype
+        payment_status: "completed", // Auto-complete for prototype
         rental_start_date,
         rental_end_date,
       })

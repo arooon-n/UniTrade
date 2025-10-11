@@ -80,8 +80,7 @@ export const getProducts = async (filters = {}) => {
       users:owner_id (
         id,
         name,
-        email,
-        profile_picture_url
+        email
       )
     `
     )

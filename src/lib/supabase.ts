@@ -57,7 +57,6 @@ export interface User {
   email: string;
   name: string;
   university?: string;
-  profile_picture_url?: string;
   role: "student" | "admin";
   rating?: number;
   created_at: string;

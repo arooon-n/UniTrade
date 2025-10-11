@@ -152,8 +152,7 @@ router.get("/:id", async (req, res) => {
         users:owner_id (
           id,
           name,
-          email,
-          profile_picture_url
+          email
         )
       `
       )
